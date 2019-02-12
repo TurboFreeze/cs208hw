@@ -1,0 +1,63 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1in]{geometry} %1 inch margins
+\usepackage{verbatim} %multi-line comment
+\usepackage{graphicx} %graphics
+\usepackage{fancyhdr} %custom header
+\usepackage{amsmath} %math
+\usepackage{amssymb} %math symbols
+\usepackage{bm} %bold math text
+\usepackage{bbm} %indicators
+\usepackage{soul} %for underlining
+\usepackage{listings}
+\usepackage{booktabs}
+%\pagenumbering{gobble} %no page numberings
+\pagestyle{fancy}
+\newcommand{\indep}{\raisebox{0.05em}{\rotatebox[origin=c]{90}{$\models$}}}
+\allowdisplaybreaks
+
+\renewcommand{\headrulewidth}{0pt}
+\lhead{CS 208 - Applied Privacy for Data Science\\Harvard University}
+\rhead{Homework 1\\ }
+%%%%%%%%%%% BEGIN DOCUMENT
+\begin{document}
+\begin{center}
+	{\Large \textbf{CS 208 - Applied Privacy for Data Science}}\\
+	{\Large \textbf{Homework 1}}\\
+	\vspace*{0.1in}
+	Spring 2019\\
+	Harvard University\\
+\end{center}
+
+{\large\textbf{Problem 1}}
+
+Studying Latanya Sweeney's record linkage reidentification attack, she used \texttt{zip code}, \texttt{date of birth}, and \texttt{gender} to uniquely identify a large portion of the population.
+
+The dataset was loaded into \texttt{R}, where preliminary data exploration took place. Most notably, there are 1000 entries and 22 variables in the dataset, with the variables being:
+\begin{center}
+\texttt{X.1, state, puma, X, jpumarow, serialno.household, sex, age, educ, income, latino, black, asian, married, divorced, uscitizen, children, disability, militaryservice, employed, englishability, fips}
+\end{center}
+The naive and most effective starting point is tallying the unique values for each of these variables. Two of the variables, \texttt{state} and \texttt{fips}, have the same value for all 1000 rows and therefore will not be considered at all. On the opposite side of the spectrum, \texttt{X.1} is the unique ID and therefore will be disregarded.
+
+Examining location identifiers, the question implies the inclusion of \texttt{puma}. Examining the rest of the variables, note that \texttt{jpumarow} = \texttt{puma} + 1090, meaning that it provides absolutely no unique information beyond what is already known from \texttt{puma} and can thus be ignored. Furthermore, here is a summary of counts for each PUMA value.
+\begin{center}
+\begin{tabular}{|c|ccccccc|}
+\hline
+\textbf{PUMA} & 1101 & 1102 & 1103 & 1104 & 1105 & 1106 & 1107\\\hline
+\textbf{Count} & 117 & 241 & 140 & 154 & 116 & 127 & 105\\ \hline
+\end{tabular}
+\end{center}
+These are very roughly equal (i.e. on the same order of magnitude). 
+
+
+{\large\textbf{Problem 2}}
+
+
+
+{\large\textbf{Appendix}}
+
+\begin{lstlisting}
+
+\end{lstlisting}
+
+
+\end{document}
