@@ -1,7 +1,7 @@
 ##
-## q2.r
+## q2reconstructionattack.r
 ##
-## Regression based attack against various defense mechanisms
+## Regression-based reconstruction attack against various defense mechanisms
 ##
 ## JH 2019/02/21
 ##
@@ -10,15 +10,17 @@ library(ggplot2)    # using ggplot graphing libraries (optional)
 
 ##### Parameters
 
-set.seed(123)       # RNG seed
-n <- 100            # Dataset size
-k.trials <- 2 * n   # Number of queries
-exp.n <- 10          # Number of experiments at each step
+set.seed(99)          # RNG seed
+n <- 100              # Dataset size
+k.trials <- 2 * n     # Number of queries
+exp.n <- 10           # Number of experiments at each step
 
 ##### Data
 
 # read in the data
 sample.data <- read.csv('FultonPUMS5sample100.csv')
+sample.data.clean <- sample.data[3:17]
+attributes.n <- length(names(sample.data.clean))
 
 # get sensitive data (USCITIZEN)
 sensitive.var <- "uscitizen"
@@ -70,28 +72,22 @@ query.subsampling <- function(data, pred, t) {
 
 ##### Define Predicates
 
+# hashing to generate predicates
+prime <- 563    # moderately large prime
+
+predicate.single <- function(r.nums, individual) {
+  (sum(r.nums * individual) %% prime) %% 2
+}
+
 # define predicates for the 2n queries
 predicates <- matrix(NA, nrow = k.trials, ncol = n)
 
-# helper function to determine membership in pred matrix
-pred.membership <- function(row.temp) {
-  bool.membership <- FALSE
-  for (i in 1:200) {
-    bool.membership <- bool.membership ||
-      isTRUE(all.equal(row.temp, predicates[i,]))
-  }
-  bool.membership
-}
-
 # generate 2n predicates
 for (pred.index in 1:k.trials) {
-  # generate possible predicate (boolean array)
-  pred.temp <- sample(c(TRUE, FALSE), n, replace = TRUE)
-  # keep generating until unique found
-  # (inefficient but workable for this size)
-  while (pred.membership(pred.temp)) {
-    pred.temp <- sample(c(TRUE, FALSE), n, replace = TRUE)
-  }
+  # generate random numbers for this hash
+  r.nums <- sample(0:(prime - 1), attributes.n, replace=TRUE)
+  # calculate for particular individual
+  pred.temp <- apply(sample.data.clean, MARGIN = 1, predicate.single, r.nums)
   # store the predicate
   predicates[pred.index,] <- pred.temp
 }
@@ -154,19 +150,33 @@ reconstruction <- function (query.function, defense.name) {
   
   names(results) <- c("param", "rmse", "frac")
   
-  
   ##### Visualization of results
+  # type to distinguish between successful (1) or not (0)
+  results$success <- as.numeric(results$frac > 0.5)
+  print(paste("Min:", min(results[results$success == 0,]$param)))
+  print(paste("Max:", max(results[results$success == 0,]$param)))
   # plot the result
-  ggplot(results, aes(x=rmse, y=frac)) + 
-    geom_point(aes(color=param)) + 
+  ggplot(results, aes(x=rmse, y=frac)) + # scatter plot
+    geom_point(aes(color=param, shape=as.factor(success + 23))) + 
+    # trend line
+    geom_line(aes(color=param), alpha=0.3) +
+    # success threshold
+    geom_line(aes(y=0.5), alpha=0.5, size=0.5, linetype=2) +
+    # labels and title
     ylab("Fraction of Successful Reconstruction") +
     xlab("RMSE") +
     ggtitle(paste("Reconstruction Attack against", defense.name)) + 
+    # legend formatting
+    scale_color_continuous(name="Parameter\nValue", low="#56B1F7", high="#132B43") +
+    scale_shape_discrete(name="Outcome", labels=c("Failure", "Success")) +
     theme_bw()
-  # plot(results$frac, results$rmse) # use this instead if no ggplot
+  #plot(results$frac, results$rmse) # use this instead if no ggplot
 }
 
 # make the calls to the reconstruction attack function
 reconstruction(query.rounding, "Rounding Defense")
+dev.copy2pdf(file="./figs/attackrounding.pdf")
 reconstruction(query.noisy, "Noise Defense")
+dev.copy2pdf(file="./figs/attacknoise.pdf")
 reconstruction(query.subsampling, "Subsampling Defense")
+dev.copy2pdf(file="./figs/attacksubsampling.pdf")

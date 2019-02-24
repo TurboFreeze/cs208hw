@@ -28,6 +28,8 @@
 	Spring 2019 - Harvard University\\
 \end{center}
 
+The public Github repo containing all of the work is at https://github.com/TurboFreeze/cs208hw. All code has also been included in the appendix of this PDF as specified.
+
 {\large\textbf{Problem 1}}
 
 %Looking back at Latanya Sweeney's record linkage reidentification attack, she used \texttt{zip code}, \texttt{date of birth}, and \texttt{gender} to uniquely identify a large portion of the population.
@@ -94,20 +96,321 @@ $\therefore$ With the five variables of \texttt{income}, \texttt{age}, \texttt{e
 While it is more difficult and less likely to orchestrate a reconstruction attack with large numbers of variables, out of interest and completeness, here are some further results. With a sixth variable of \texttt{black}, 68\% of the population can be uniquely identified. With a seventh added variable of \texttt{employed}, 81\% of the population can be uniquely identified. The remaining binary variables have sharply decreasing utility due to their uneven distribution (i.e. almost all individuals have the same value and therefore it is not very helpful in identifying someone).
 
 Finally, some small disclaimers. The results above are all approximate and derived from rough back-of-the-envelope calculations. They are also assuming that these variables are available in external sources for cross-referencing, which may present practical obstacles that may or may not be easy to handle. For example, a specific education encoding is used here. Other government databases may use the same schema, making cross-referencing trivial. Furthermore, knowing an individual's exact education level may also be sufficient to map it to one of the factors in this dataset's \texttt{educ} schema. However, if a different, less granular schema was used (i.e. only 5 levels instead of 16), then cross-referencing may not really be possible. Different levels of granularity would be a particularly common issue for \texttt{income}, with added concerns such as rounding. It may also affect \texttt{age}, though probably to a much lesser extent. Binary variables should otherwise be less problematic in this regard.\\
+\pagebreak
 
 {\large\textbf{Problem 2}}
 
+The code for this problem can be found in \texttt{q2reconstruction.R}. In this problem, a reconstruction attack was executed against three defense mechanisms (rounding, noise, subsampling) in a \texttt{R} script. Plots of the results follow, with the parameter values for each defense ranging from 1 to $n$ (note that it is not really possible to round to the nearest multiple of 0, nor subsample 0 out of $n$ rows). The resulting fraction of results that were successfully reconstructed were plotted against the root-mean-squared error (RMSE) metric. Each data point is the average of 10 trials in order to account for the randomness introduced by the defense mechanisms.
+\begin{center}
+\includegraphics[width=\textwidth]{figs/attackrounding}
+\end{center}
+With the above attack against the rounding defense, the first failure occurs with $R = 15$ and the last success occurs at $R = 25$. The reconstruction fraction declines rapidly before oscillating substantially just below the success threshold.
+
+\begin{center}
+\includegraphics[width=\textwidth]{figs/attacknoise}
+\end{center}
+With the above attack against the noise injection defense, the results drop precipitously and clearly cross from success to failure with all $\sigma > 3$ producing high enough noise to result in failure.
+
+\begin{center}
+\includegraphics[width=\textwidth]{figs/attacksubsampling}
+\end{center}
+For the subsampling defense, larger subsamples result in worse privacy, with anything above subsamples of size 64 providing sufficient protection against successful reconstruction.
+\pagebreak
 
 {\large\textbf{Problem 3}}
 
+\pagebreak
 
 {\large\textbf{Problem 4}}
 
 
 
-\begin{lstlisting}
+{\large\textbf{Appendix}}
 
+\textbf{Code for Problem 1}
+\begin{lstlisting}[language=R]
+##
+## q1.r
+##
+## Exploring Fulton PUMS data to identify variables for reidentification attack 
+##
+## JH 2019/02/11
+##
+
+# read in the data
+data <- read.csv('FultonPUMS5full.csv')
+# summary of data
+head(data)
+nrow(data)
+# variables
+print(paste(names(data), collapse=", "))
+print(length(names(data)))
+
+# see how many unique values of each variable
+vars <- c()
+counts <- c()
+for (n in names(data)) {
+  vars <- c(vars, n)
+  counts <- c(counts, nrow(unique(data[n])))
+}
+results <- data.frame(var=vars, count=counts)
+
+# look at location identifiers
+table(data$puma)
+# unique(data$puma - data$jpumarow)
+# unique(data$puma - data$X)
+# # remove duplicates
+# results <- results[!results$var %in% c("X", "jpumarow"),]
+
+# remove variables with single count
+results[results$count == 1,] # state and fips have one count
+results <- results[results$count != 1,]
+
+
+# plot distributions
+jpeg('./figs/exploredist.jpg', width=1000, height=300)
+par(mfrow=c(1,3))
+barplot(table(data$income), xaxt='n', ylab='', main="income Distribution")
+axis(side=1)
+barplot(table(data$age), ylab='', main="age Distribution")
+barplot(table(data$educ), ylab='', main="educ Distribution")
+par(mfrow=c(1,1))
+dev.off()
+
+
+# collision probabilities
+collision <- function(vardata) {
+  sum((table(vardata) / nrow(data))^2)
+}
+
+p.collisions <- c()
+for (v in as.character(results$var)) {
+  p.collisions <- rbind(p.collisions, c(v,collision(data[v])))
+}
+p.collisions
+
+# find average size of PUMA
+avg.puma <- round(20 * nrow(data) / length(unique(data$puma)))
+
+# calculate joint probability of collision
+collision.joint <- function (vars) {
+  joint <- 1
+  for (v in vars) {
+    joint <- joint * collision(data[v])
+  }
+  joint
+}
+
+# calculate percentage of average PUMA uniquely identifiable
+identifiable <- function (p.collision) {
+  (1 - p.collision)^avg.puma
+}
+
+
+# calculate results with proposed list of identifying variables
+varlist <- c("income", "age", "educ")
+identifiable(collision.joint(varlist))
+varlist <- c(varlist, "sex", "married")
+identifiable(collision.joint(varlist))
+varlist <- c(varlist, "black")
+identifiable(collision.joint(varlist))
+varlist <- c(varlist, "employed")
+identifiable(collision.joint(varlist))
 \end{lstlisting}
+
+\pagebreak
+
+\textbf{Code for Problem 2}
+
+\begin{lstlisting}[language=R]
+##
+## q2reconstructionattack.r
+##
+## Regression-based reconstruction attack against various defense mechanisms
+##
+## JH 2019/02/21
+##
+
+library(ggplot2)    # using ggplot graphing libraries (optional)
+
+##### Parameters
+
+set.seed(99)          # RNG seed
+n <- 100              # Dataset size
+k.trials <- 2 * n     # Number of queries
+exp.n <- 10           # Number of experiments at each step
+
+##### Data
+
+# read in the data
+sample.data <- read.csv('FultonPUMS5sample100.csv')
+sample.data.clean <- sample.data[3:17]
+attributes.n <- length(names(sample.data.clean))
+
+# get sensitive data (USCITIZEN)
+sensitive.var <- "uscitizen"
+sensitive.data <- sample.data[, sensitive.var]
+
+
+##### Querying Mechanisms (including defenses)
+
+# standard query of the dataset
+query <- function(data, pred) {
+  # extract data subset according to specified predicate
+  subset <- data[pred]
+  # calculate desired sum
+  sum <- sum(subset)
+  sum
+}
+
+# query w/ defense by rounding to nearest multiple of R
+query.rounding <- function(data, pred, r) {
+  # get actual query
+  sum <- query(data, pred)
+  # apply rounding defense
+  sum.rounded <- round(sum / r) * r
+  sum.rounded
+}
+
+# query w/ defense by adding Gaussian noise
+query.noisy <- function(data, pred, sigma) {
+  # get actual query
+  sum <- query(data, pred)
+  # apply Gaussian noise as defense
+  sum.noisy <- sum + rnorm(1, 0, sigma)
+  sum.noisy
+}
+
+# query w/ defense by subsampling t out of n rows
+query.subsampling <- function(data, pred, t) {
+  # create subsample T with t out of n rows
+  T.rows <- sample(length(data), t)
+  # extract data subset from subsample according to specified predicate
+  T.data <- data[T.rows]
+  # get actual query on this subsample
+  sum <- query(T.data, pred[T.rows])
+  # scale up
+  sum.sub <- sum * length(data) / t
+  sum.sub
+}
+
+
+##### Define Predicates
+
+# hashing to generate predicates
+prime <- 563    # moderately large prime
+
+predicate.single <- function(r.nums, individual) {
+  (sum(r.nums * individual) %% prime) %% 2
+}
+
+# define predicates for the 2n queries
+predicates <- matrix(NA, nrow = k.trials, ncol = n)
+
+# generate 2n predicates
+for (pred.index in 1:k.trials) {
+  # generate random numbers for this hash
+  r.nums <- sample(0:(prime - 1), attributes.n, replace=TRUE)
+  # calculate for particular individual
+  pred.temp <- apply(sample.data.clean, MARGIN = 1, predicate.single, r.nums)
+  # store the predicate
+  predicates[pred.index,] <- pred.temp
+}
+
+
+#### Main Reconstruction Attack function
+# takes a defense query mechanism and name of defense
+# makes the attack and plots the results
+reconstruction <- function (query.function, defense.name) {
+  results <- data.frame(param=integer(), rmse=numeric(), frac=numeric())
+  # loop through different parameter values
+  for (param.value in 1:n) {
+    # make 10 experiments each time, storing each RMSE and fraction of success
+    experiments.rmse <- vector("numeric", exp.n)
+    experiments.frac <- vector("numeric", exp.n)
+    for (exp.index in 1:exp.n) {
+      squared.errors <- c()
+      history <- matrix(NA, nrow = k.trials, ncol = (n + 1))
+      
+      ##### Run Queries
+      # make the 2n queries using the generated predicates
+      for (pred.index in 1:k.trials) {
+        # extract predicate
+        pred.current <- predicates[pred.index,]
+        # get standard query and query with defense
+        q.standard <- query(sensitive.data, pred.current)
+        q.defense <- query.function(sensitive.data, pred.current, param.value)
+        # save this query (result w/ defense + predicate) to history table
+        history[pred.index,] <- c(q.defense, as.numeric(pred.current))
+        # calculate and store squared errors
+        squared.errors <- c(squared.errors, (q.defense - q.standard) ** 2)
+      }
+      # calculate RMSE for this experiment
+      experiments.rmse[exp.index] <- sqrt(sum(squared.errors))
+      
+      # convert into dataframe
+      xnames <- paste("x", 1:n, sep="")
+      varnames <- c("y", xnames)
+      release.data <- as.data.frame(history)
+      names(release.data) <- varnames
+      
+      ##### Regression Attack
+      # attack formula
+      attack.formula <- paste(xnames, collapse=" + ")
+      attack.formula <- paste("y ~ ", attack.formula, "-1")
+      attack.formula <- as.formula(attack.formula)
+      attack.output <- lm(attack.formula, data=release.data)
+      # regression coefficient estimates
+      attack.estimates <- attack.output$coef
+      # estimates rounded to give reconstruction predictions
+      attack.reconstructed <- round(attack.estimates)
+      # calculate fraction successfully reconstructed
+      experiments.frac[exp.index] <-
+        sum(attack.reconstructed == sensitive.data) / n
+    }
+    # append the avg of the 10 experiments for this particular parameter value
+    results <- rbind(results,
+                     c(param.value, mean(experiments.rmse), mean(experiments.frac)))
+  }
+  
+  names(results) <- c("param", "rmse", "frac")
+  
+  ##### Visualization of results
+  # type to distinguish between successful (1) or not (0)
+  results$success <- as.numeric(results$frac > 0.5)
+  print(paste("Min:", min(results[results$success == 0,]$param)))
+  print(paste("Max:", max(results[results$success == 0,]$param)))
+  # plot the result
+  ggplot(results, aes(x=rmse, y=frac)) + # scatter plot
+    geom_point(aes(color=param, shape=as.factor(success + 23))) + 
+    # trend line
+    geom_line(aes(color=param), alpha=0.3) +
+    # success threshold
+    geom_line(aes(y=0.5), alpha=0.5, size=0.5, linetype=2) +
+    # labels and title
+    ylab("Fraction of Successful Reconstruction") +
+    xlab("RMSE") +
+    ggtitle(paste("Reconstruction Attack against", defense.name)) + 
+    # legend formatting
+    scale_color_continuous(name="Parameter\nValue", low="#56B1F7", high="#132B43") +
+    scale_shape_discrete(name="Outcome", labels=c("Failure", "Success")) +
+    theme_bw()
+  #plot(results$frac, results$rmse) # use this instead if no ggplot
+}
+
+# make the calls to the reconstruction attack function
+reconstruction(query.rounding, "Rounding Defense")
+dev.copy2pdf(file="./figs/attackrounding.pdf")
+reconstruction(query.noisy, "Noise Defense")
+dev.copy2pdf(file="./figs/attacknoise.pdf")
+reconstruction(query.subsampling, "Subsampling Defense")
+dev.copy2pdf(file="./figs/attacksubsampling.pdf")
+\end{lstlisting}
+
+
+\pagebreak
+
+\textbf{Code for Problem 3}
 
 
 \end{document}
