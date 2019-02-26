@@ -30,9 +30,9 @@ sensitive.data <- sample.data[, sensitive.var]
 ##### Querying Mechanisms (including defenses)
 
 # standard query of the dataset
-query <- function(data, pred) {
+query <- function(data, pred, p) {
   # extract data subset according to specified predicate
-  subset <- data[pred]
+  subset <- data[as.logical(pred)]
   # calculate desired sum
   sum <- sum(subset)
   sum
@@ -63,7 +63,7 @@ query.subsampling <- function(data, pred, t) {
   # extract data subset from subsample according to specified predicate
   T.data <- data[T.rows]
   # get actual query on this subsample
-  sum <- query(T.data, pred[T.rows])
+  sum <- query(data[T.rows], pred[T.rows])
   # scale up
   sum.sub <- sum * length(data) / t
   sum.sub
@@ -138,7 +138,7 @@ reconstruction <- function (query.function, defense.name) {
       # regression coefficient estimates
       attack.estimates <- attack.output$coef
       # estimates rounded to give reconstruction predictions
-      attack.reconstructed <- round(attack.estimates)
+      attack.reconstructed <- as.numeric(attack.estimates > 0.5) #round(attack.estimates)
       # calculate fraction successfully reconstructed
       experiments.frac[exp.index] <-
         sum(attack.reconstructed == sensitive.data) / n
@@ -153,11 +153,9 @@ reconstruction <- function (query.function, defense.name) {
   ##### Visualization of results
   # type to distinguish between successful (1) or not (0)
   results$success <- as.numeric(results$frac > 0.5)
-  print(paste("Min:", min(results[results$success == 0,]$param)))
-  print(paste("Max:", max(results[results$success == 0,]$param)))
   # plot the result
   ggplot(results, aes(x=rmse, y=frac)) + # scatter plot
-    geom_point(aes(color=param, shape=as.factor(success + 23))) + 
+    geom_point(aes(color=param)) + 
     # trend line
     geom_line(aes(color=param), alpha=0.3) +
     # success threshold
@@ -168,7 +166,6 @@ reconstruction <- function (query.function, defense.name) {
     ggtitle(paste("Reconstruction Attack against", defense.name)) + 
     # legend formatting
     scale_color_continuous(name="Parameter\nValue", low="#56B1F7", high="#132B43") +
-    scale_shape_discrete(name="Outcome", labels=c("Failure", "Success")) +
     theme_bw()
   #plot(results$frac, results$rmse) # use this instead if no ggplot
 }
