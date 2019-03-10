@@ -1,0 +1,101 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1in]{geometry} %1 inch margins
+\usepackage{verbatim} %multi-line comment
+\usepackage{graphicx} %graphics
+\usepackage{fancyhdr} %custom header
+\usepackage{amsmath} %math
+\usepackage{amssymb} %math symbols
+\usepackage{bm} %bold math text
+\usepackage{bbm} %indicators
+\usepackage{soul} %for underlining
+\usepackage{listings}
+\usepackage{booktabs}
+%\pagenumbering{gobble} %no page numberings
+\pagestyle{fancy}
+\newcommand{\indep}{\raisebox{0.05em}{\rotatebox[origin=c]{90}{$\models$}}}
+\allowdisplaybreaks
+
+\renewcommand{\headrulewidth}{0pt}
+\lhead{CS 208 - Applied Privacy for Data Science\\Harvard University}
+\rhead{Huang, Jason\\Homework 2}
+%%%%%%%%%%% BEGIN DOCUMENT
+\begin{document}
+\begin{center}
+	{\Large \textbf{CS 208 - Applied Privacy for Data Science}}\\
+	{\Large \textbf{Homework 2}}\\
+	\vspace*{0.1in}
+	Jason Huang\\
+	Spring 2019 - Harvard University\\
+\end{center}
+
+The public Github repo containing all work is at https://github.com/TurboFreeze/cs208hw. All code has also been included in the appendix of this PDF as specified.\\
+
+{\large\textbf{Problem 1}}
+
+\textbf{(a)}
+\begin{enumerate}
+	\item[(i)] The clamping function is effectively applying a post-processing function to the noisy query result. In other words, Laplace noise is added to the true mean $\bar{x}$, which must be $(\epsilon, 0)$-DP. The following clamping function does not change the privacy characteristics guaranteed by differential privacy, meaning that this mechanism \textbf{meets the definition} of $(\epsilon, 0)$-DP (following directly by privacy under post-processing and the proof of Laplace DP).
+	
+	Note that the scale factor parameter of the Laplace distribution should be set to $s = GS_q/\epsilon$ for differential privacy, meaning that $\epsilon = GS_q/s$. In this case, the global sensitivity $GS_q$ is the maximum change that can be affected to the statistic by a single entry's change, which in this case would be $1/n$ for the mean. Furthermore $s = 2 / n$. The $\epsilon = (1/n) / (2/n) \implies \boxed{\epsilon= 2}$.
+	\item[(ii)] Constant ratios of Laplace mechanisms
+	\item[(iii)] 
+	\begin{align*}
+		\dfrac{P[M(x', q) = r]}{P[M(x, q)=r]} &= \\
+	\end{align*}
+	\item[(iv)] 
+\end{enumerate}
+\begin{align*}
+	P[M(x, q) = r] &= P[[\bar{x} + Z]^1_0 = r]\\
+	&= \\
+	\dfrac{P[M(x, q) = r]}{P[M(x', q)=r]} &= \\
+	P[M(x, q) = r] &= P[\bar{x} + [Z]^1_{-1} = r]\\
+	&= \\
+\end{align*}
+
+{\large\textbf{Problem 2}}
+
+\textbf{(a)} The DGP is the following likelihood of some data vector $k\in\mathbb{N}^n$:
+\[P(\mathbf{x} = \mathbf{k}) = \prod\limits^n_{i=1} \dfrac{10^{\mathbf{k}_i}e^{-10}}{\mathbf{k}_i!}\]
+The DGP function was implemented using a Poisson random draw.
+
+{\large\textbf{Problem 3}}
+
+{\large\textbf{Problem 4}}
+
+Use linearity of expectations and fundamental bridge to convert between probabilities and expectation of indicators.
+\begin{align*}
+	\mathbb{E}[\#\{ i\in [n]: A(M(X))_i = X_i\} / n] &= \mathbb{E}[\mathbbm{1}\{ i\in [n]: A(M(X))_i = X_i\} / n]\\
+	&= \mathbb{E}[\sum\limits^n_{i=1}\mathbbm{1}(A(M(X))_i = X_i) / n]\\
+	&= \dfrac{1}{n}\sum\limits^n_{i=1}\mathbb{E}[\mathbbm{1}(A(M(X))_i = X_i)]\\
+	&= \dfrac{1}{n}\sum\limits^n_{i=1}P(A(M(X))_i = X_i)
+\end{align*}
+Use the definition of $(\epsilon, \delta)$-DP
+
+
+
+\pagebreak
+
+{\large\textbf{Appendix}}
+
+\textbf{Code for Problem 1}
+
+\begin{lstlisting}[language=R]
+\end{lstlisting}
+
+\pagebreak
+
+\textbf{Code for Problem 2}
+
+\begin{lstlisting}[language=R]
+\end{lstlisting}
+
+
+\pagebreak
+
+\textbf{Code for Problem 3}
+
+\begin{lstlisting}[language=R]
+\end{lstlisting}
+
+
+\end{document}

@@ -1,5 +1,7 @@
 .DS_Store
 
+.Rhistory
+
 # 'Helper' LaTeX files to ignore
 *.aux
 *.fdb_latexmk
