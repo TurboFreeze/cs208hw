@@ -44,7 +44,8 @@ dpclamping <- function (data, epsilon, a=0, b) {
   
   # generate noise by Laplace mechanism
   data.len <- length(data)
-  laplace.shift <- 2 / data.len
+  sensitivity <- (b - a) / data.len
+  laplace.shift <- sensitivity / epsilon
   noise <- rlap(s=laplace.shift, size=1)
   
   # inject noise
@@ -64,24 +65,30 @@ epsilon <- 0.5
 b.seq <- seq(0, 30, by=0.1)
 b.num <- length(b.seq)
 
-# generate data
-data.poisson <- dgp(n, lambda=10)
 
 # calculate RMSE
 rmse <- function (data, m) {
   sqrt(sum((data - m)^2))
 }
 
+n.trials <- 100
 rmses <- vector("numeric", b.num)
 for (i in 1:b.num) {
-  # calculate dp query of mean
-  dpmean <- dpclamping(data=data.poisson, epsilon=epsilon, b=b.seq[i])
+  # generate data
+  data.poisson <- dgp(n, lambda=10)
+  
+  dpmeans <- vector("numeric", n.trials)
+  for (j in 1:n.trials) {
+    # calculate dp query of mean
+    dpmeans[j] <- dpclamping(data=data.poisson, epsilon=epsilon, b=b.seq[i])
+  }
   # calculate and store RMSE
-  rmses[i] <- rmse(data.poisson, dpmean)
+  rmses[i] <- rmse(dpmeans, m=mean(data.poisson))
 }
 
+
 # find index of minimum RMSE (optimal value of b)
-b.optimal <- b.seq[which.min(rmses)]
+b.optimal <- b.seq[which.min(rmses)]; b.optimal
 
 #plot(b.seq, rmses, type='l') # uncomment if no ggplot
 
@@ -92,4 +99,5 @@ clamping.plot <- ggplot(rmsedata, aes(x=b, y=rmse)) +
   geom_line() +
   geom_vline(xintercept=b.optimal, color="red", alpha=0.8, linetype="dashed") +
   theme_bw()
+clamping.plot
 ggsave("clamping.jpg", clamping.plot)
