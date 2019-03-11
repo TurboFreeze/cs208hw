@@ -40,7 +40,7 @@ clamp <- function (data, a, b) {
 
 # differentially private mechanism (clamping)
 dpclamping <- function (data, epsilon, a=0, b) {
-  mean.actual <- mean(data)
+  mean.actual <- mean(clamp(data, a, b))
   
   # generate noise by Laplace mechanism
   data.len <- length(data)
@@ -65,6 +65,8 @@ epsilon <- 0.5
 b.seq <- seq(0, 30, by=0.1)
 b.num <- length(b.seq)
 
+# generate data
+data.poisson <- dgp(n, lambda=10)
 
 # calculate RMSE
 rmse <- function (data, m) {
@@ -74,8 +76,6 @@ rmse <- function (data, m) {
 n.trials <- 100
 rmses <- vector("numeric", b.num)
 for (i in 1:b.num) {
-  # generate data
-  data.poisson <- dgp(n, lambda=10)
   
   dpmeans <- vector("numeric", n.trials)
   for (j in 1:n.trials) {
