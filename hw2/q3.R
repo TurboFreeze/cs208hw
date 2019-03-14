@@ -78,16 +78,18 @@ dpslope <- function (y, x, ylower=0, yupper=b.optimal, xlower=0, xupper=b.optima
 }
 
 # Differentially private linear regression release of intercept and slope
-dpregression <- function (y, x, ylower=0, yupper=b.optimal, xlower=0, xupper=b.optimal, epsilon) {
+dpregression <- function (y, x, ylower=0, yupper=b.optimal, xlower=0, xupper=b.optimal,
+                          epsilon, epsilon.partition=c(0.25, 0.25, 0.25, 0.25)) {
   x <- clamp(x, xlower, xupper)
   y <- clamp(y, ylower, yupper)
   
   # calculate dp slope
-  dpbeta <- dpslope(y, x, ylower, yupper, xlower, xupper, epsilon / 4, epsilon / 4)
+  dpbeta <- dpslope(y, x, ylower, yupper, xlower, xupper,
+                    epsilon * epsilon.partition[1], epsilon * epsilon.partition[2])
   
   # calculate dp intercept
-  dpmean.x <- dpmean(x, epsilon / 4, b=xupper)
-  dpmean.y <- dpmean(y, epsilon / 4, b=yupper)
+  dpmean.x <- dpmean(x, epsilon * epsilon.partition[3], b=xupper)
+  dpmean.y <- dpmean(y, epsilon * epsilon.partition[4], b=yupper)
   dpalpha <- dpmean.y - dpbeta * dpmean.x
   
   list(dpalpha=dpalpha, dpbeta=dpbeta)
@@ -138,6 +140,7 @@ msrs.scatterplot <- ggplot(msrs.data, aes(x=n)) +
   geom_point(aes(y=dp), color="red", alpha=0.7, size=0.5) +
   geom_point(aes(y=non), color="green", alpha=0.7, size=0.5) +
   ylim(y.window) +
+  ylab("mean squared residuals") +
   theme_bw(); msrs.scatterplot
 
 # monte carlo traceplot
@@ -145,8 +148,16 @@ msrs.traceplot <- ggplot(msrs.data, aes(x=n)) +
   geom_line(aes(y=dp), color="red") +
   geom_line(aes(y=non), color="green") +
   ylim(y.window) +
+  ylab("mean squared residuals") +
   theme_bw(); msrs.traceplot
 
+# distributions
+msrs.distribution <- ggplot(msrs.data) +
+  xlim(c(0, 5)) +
+  xlab("mean squared residuals") +
+  geom_density(aes(dp), fill="red", alpha=0.7) +
+  geom_density(aes(non), fill="green", alpha=0.7) +
+  theme_bw(); msrs.distribution
 # distribution histograms
 #hist(msrs.data$dp[msrs.data$dp < 10]) # uncomment if no ggplot
 
@@ -154,4 +165,65 @@ library(gridExtra)
 gridplots <- grid.arrange(msrs.scatterplot, msrs.traceplot)
 
 ggsave("msrs.jpg", gridplots)
+ggsave("msrsdist.jpg", msrs.distribution)
 
+
+
+### PART (C)
+# helper function to normalize to distribution of weights
+normalize <- function(vec) {
+  vec / sum(vec)
+}
+
+# hyperparameter space
+param.domain <- seq(0.1, 1, by=0.1)
+# recursive function to generate all hyperparamater combinations
+param.combs <- function (hypers) {
+  if (length(hypers) == 4) {
+    normalize(hypers)
+  } else {
+    res <- c()
+    for (i in 1:length(param.domain)) {
+      res <- rbind(res, param.combs(c(hypers, param.domain[i])))
+    }
+    res
+  }
+}
+# generate hyperparameter combinations
+param.space <- param.combs(c())
+param.msr <- vector("numeric", nrow(param.space))
+
+# calculate mean squared residuals
+for (i in 1:nrow(param.space)) {
+  # generate data
+  x <- dgp(n, lambda=10)
+  y <- beta * x + alpha + rnorm(n, 0, sigma)
+  
+  # calculate differentially private release
+  results.dp <- dpregression(y, x, epsilon=epsilon, epsilon.partition=param.space[i,])
+  param.msr[i] <- msr(y, x, results.dp$dpbeta, results.dp$dpalpha)
+}
+
+# equal partition of epsilon
+results.dp <- dpregression(y, x, epsilon=epsilon, epsilon.partition=param.space[i,])
+equal.msr <- msr(y, x, results.dp$dpbeta, results.dp$dpalpha); equal.msr
+
+# get minimum mean squared residuals
+min.index <- c()
+min.space <- c()
+min.msr <- c()
+param.msr.working <- param.msr
+param.space.working <- param.space
+# get top 10 hyperparameter configurations
+for (i in 1:10) {
+  m <- which.min(param.msr.working)
+  min.index <- c(min.index, m)
+  min.msr <- c(min.msr, param.msr.working[m])
+  min.space <- rbind(min.space, param.space.working[m,])
+  param.msr.working <- param.msr.working[-1 * m]
+  param.space.working <- param.space.working[-1 * m,]
+}
+# find mean and median of hyperparameters
+min.msr
+mea <- apply(min.space, mean, MARGIN = 2); mea
+med <- apply(min.space, median, MARGIN = 2); med
