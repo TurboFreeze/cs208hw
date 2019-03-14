@@ -32,11 +32,12 @@ The public Github repo containing all work is at https://github.com/TurboFreeze/
 
 {\large\textbf{Problem 1}}
 
-\textbf{(a)}
 \begin{enumerate}
-	\item[(i)] The clamping function is effectively applying a post-processing function to the noisy query result. In other words, Laplace noise is added to the true mean $\bar{x}$, which must be $(\epsilon, 0)$-DP. The following clamping function does not change the privacy characteristics guaranteed by differential privacy, meaning that this mechanism \textbf{meets the definition} of $(\epsilon, 0)$-DP (following directly by privacy under post-processing and the proof of Laplace DP).
+	\item[(i)] \begin{enumerate}
+	\item The clamping function is effectively applying a post-processing function to the noisy query result. In other words, Laplace noise is added to the true mean $\bar{x}$, which must be $(\epsilon, 0)$-DP. The following clamping function does not change the privacy characteristics guaranteed by differential privacy, meaning that this mechanism \textbf{meets the definition} of $(\epsilon, 0)$-DP (following directly by privacy under post-processing and the proof of Laplace DP).
 	
 	Note that the scale factor parameter of the Laplace distribution should be set to $s = GS_q/\epsilon$ for differential privacy, meaning that $\epsilon = GS_q/s$. In this case, the global sensitivity $GS_q$ is the maximum change that can be affected to the statistic by a single entry's change, which in this case would be $1/n$ for the mean. Furthermore $s = 2 / n$. The $\epsilon = (1/n) / (2/n) \implies \boxed{\epsilon= 0.5}$.
+	\end{enumerate}
 	\item[(ii)] Constant ratios of Laplace mechanisms
 	\item[(iii)] 
 	\begin{align*}
@@ -51,6 +52,9 @@ The public Github repo containing all work is at https://github.com/TurboFreeze/
 	P[M(x, q) = r] &= P[\bar{x} + [Z]^1_{-1} = r]\\
 	&= \\
 \end{align*}
+(d)
+
+\pagebreak
 
 {\large\textbf{Problem 2}}
 
@@ -72,9 +76,9 @@ The DGP function was implemented using a Poisson random draw.
 
 \emph{See the attached R script \texttt{q2.R} for the implementation}.\\
 
-\textbf{(d)}
+\textbf{(d)} This approach is not safe and might violate differential privacy because it implicitly incorporates information about the dataset that is not included in the data. More specifically, bootstrapping is powerful because of its very ability to simulate the data generating process and the distribution of the data. Therefore, bootstrapping to find an estimate for the optimal value $b^*$ is effectively the same thing as calculating the true optimal $b^*$, only numerically instead of analytically. Now, knowing the optimal $b^*$ violates privacy because it also provides insight into the distribution (i.e. one of the ways this can be intuitively described is as an approximate maximum of everything that is not an outlier). This is similar to the idea of why local sensitivity, which is a characteristic of the data set, is not $(\epsilon, \delta)$-DP but global sensitivity is. The optimal $b^*$ is a specific data-dependent attribute of the data set that can leak privacy if not controlled for, as is the case with bootstrapping here.\\
 
-\textbf{(e)}\\
+\textbf{(e)} Use an external reference for determining an approximation for $b^*$. Generally, a similar public data set (i.e. past iterations of the census or different geographic tracts that have been made public) can help provide a rough estimate of the upper bound for the individual. Often times, a reasonable heuristic can be used based on common knowledge, such as the rough range of human ages or other metadata provided for the data set (i.e. in a codebook or schema).\\
 
 {\large\textbf{Problem 3}}
 
@@ -99,9 +103,17 @@ Use linearity of expectations and fundamental bridge to convert between probabil
 	\mathbb{E}[\#\{ i\in [n]: A(M(X))_i = X_i\} / n] &= \mathbb{E}[\mathbbm{1}\{ i\in [n]: A(M(X))_i = X_i\} / n]\\
 	&= \mathbb{E}[\sum\limits^n_{i=1}\mathbbm{1}(A(M(X))_i = X_i) / n]\\
 	&= \dfrac{1}{n}\sum\limits^n_{i=1}\mathbb{E}[\mathbbm{1}(A(M(X))_i = X_i)]\\
-	&= \dfrac{1}{n}\sum\limits^n_{i=1}P(A(M(X))_i = X_i)
+	&= \dfrac{1}{n}\sum\limits^n_{i=1}P(A(M(X))_i = X_i)\\
+	&= P(A(M(X))_i = X_i)
 \end{align*}
-Use the definition of $(\epsilon, \delta)$-DP
+Where the last simplification is made by noting the independence of the $X_i$ data draws. Let there be a dataset $X^{i0}$ or $X^{i1}$ such that the $i^{th}$ row is changed to 0 or 1 respectively, with corresponding probabilities of $p$ and $1-p$ by the nature of the given Bernoulli data generating process. Now by the definition of $(\epsilon, \delta)$-DP:
+\begin{align*}
+	\mathbb{E}[\#\{ i\in [n]: A(M(X))_i = X_i\} / n] &= P(A(M(X))_i = X_i)\\
+	&\leq e^{\epsilon}\cdot \text{max}\{P(A(M(X^{i0}))_i = X_i),P(A(M(X^{i1}))_i = X_i)\} + \delta\\
+	&\leq e^{\epsilon}\cdot \text{max}\{p, 1-p)\} + \delta
+\end{align*}
+The desired result has been shown.
+\[\therefore\boxed{\mathbb{E}[\#\{ i\in [n]: A(M(X))_i = X_i\} / n] \leq e^{\epsilon} \cdot \text{max}\{p, 1-p\} + \delta}\text{ as desired}\]
 
 
 
@@ -119,6 +131,109 @@ Use the definition of $(\epsilon, \delta)$-DP
 \textbf{Code for Problem 2}
 
 \begin{lstlisting}[language=R]
+##
+## q2.r
+##
+## Evaluating DP algorithms with synthetic data
+##
+## JH 2019/03/10
+##
+
+
+
+##3 PART (A)
+# data generating process
+dgp <- function (n, lambda=10) {
+  rpois(n, lambda)
+}
+
+
+
+### PART (B)
+
+# sign function
+sgn <- function(x) {
+  return(ifelse(x < 0, -1, 1))
+}
+
+# laplace random draws
+rlap <- function(mu=0, s=1, size=1) {
+  p <- runif(size) - 0.5
+  draws <- mu - s * sgn(p) * log(1 - 2 * abs(p))
+  draws
+}
+
+# clamping helper function
+clamp <- function (data, a, b) {
+  data.clamped <- data
+  data.clamped[data < a] <- a
+  data.clamped[data > b] <- b
+  data.clamped
+}
+
+# differentially private mechanism (clamping)
+dpclamping <- function (data, epsilon, a=0, b) {
+  mean.actual <- mean(clamp(data, a, b))
+  
+  # generate noise by Laplace mechanism
+  data.len <- length(data)
+  sensitivity <- (b - a) / data.len
+  laplace.shift <- sensitivity / epsilon
+  noise <- rlap(s=laplace.shift, size=1)
+  
+  # inject noise
+  mean.noisy <- mean.actual + noise
+  
+  # apply clamping
+  mean.clamped <- clamp(mean.noisy, a, b)
+}
+
+
+
+### PART (C)
+
+# parameters
+n <- 200
+epsilon <- 0.5
+b.seq <- seq(0, 30, by=0.1)
+b.num <- length(b.seq)
+
+# generate data
+data.poisson <- dgp(n, lambda=10)
+
+# calculate RMSE
+rmse <- function (data, m) {
+  sqrt(sum((data - m)^2))
+}
+
+n.trials <- 100
+rmses <- vector("numeric", b.num)
+for (i in 1:b.num) {
+  
+  dpmeans <- vector("numeric", n.trials)
+  for (j in 1:n.trials) {
+    # calculate dp query of mean
+    dpmeans[j] <- dpclamping(data=data.poisson, epsilon=epsilon, b=b.seq[i])
+  }
+  # calculate and store RMSE
+  rmses[i] <- rmse(dpmeans, m=mean(data.poisson))
+}
+
+
+# find index of minimum RMSE (optimal value of b)
+b.optimal <- b.seq[which.min(rmses)]; b.optimal
+
+#plot(b.seq, rmses, type='l') # uncomment if no ggplot
+
+# visualize
+rmsedata <- data.frame(b=b.seq, rmse=rmses)
+library(ggplot2)
+clamping.plot <- ggplot(rmsedata, aes(x=b, y=rmse)) +
+  geom_line() +
+  geom_vline(xintercept=b.optimal, color="red", alpha=0.8, linetype="dashed") +
+  theme_bw()
+clamping.plot
+ggsave("clamping.jpg", clamping.plot)
 \end{lstlisting}
 
 
