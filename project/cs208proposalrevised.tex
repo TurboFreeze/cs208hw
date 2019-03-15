@@ -1,0 +1,51 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1in]{geometry} %1 inch margins
+\usepackage{verbatim} %multi-line comment
+\usepackage{graphicx} %graphics
+\usepackage{fancyhdr} %custom header
+\usepackage{amsmath} %math
+\usepackage{amssymb} %math symbols
+\usepackage{bm} %bold math text
+\usepackage{bbm} %indicators
+\usepackage{soul} %for underlining
+\usepackage{listings}
+\usepackage{booktabs}
+%\pagenumbering{gobble} %no page numberings
+\pagestyle{fancy}
+\newcommand{\indep}{\raisebox{0.05em}{\rotatebox[origin=c]{90}{$\models$}}}
+\allowdisplaybreaks
+
+\renewcommand{\headrulewidth}{0pt}
+\lhead{CS 208 - Applied Privacy for Data Science\\Harvard University}
+\rhead{Huang, Jason\\Project Proposal}
+%%%%%%%%%%% BEGIN DOCUMENT
+\begin{document}
+\begin{center}
+	{\Large \textbf{CS 208 - Applied Privacy for Data Science}}\\
+	{\Large \textbf{Project Proposal}}\\
+	\vspace*{0.1in}
+	Jason Huang\\
+	Spring 2019 - Harvard University\\
+\end{center}
+
+%There will be two options, depending on the feasibility and feedback that is received on this proposal submission. The first one is the preferred option though may be difficult to develop into new results and may be more of a reflection on previous literature. The second one is a bit of a fallback practical project working with a dataset.
+
+\begin{enumerate}
+\item \textbf{Practical Differential Privacy for Distributed Users}: This is effectively a study and in-depth investigation into what has become a common application of differential privacy: collecting data in a locally manner from a large population of users over time. These are particularly evident with commercial deployments such as within Apple's iOS and Google's RAPPOR system. These and other deployments will likely be examined in-detail and their shortcomings detailed. Ideally, some formal evaluation of their shortfalls can be calculated or, optimistically, possibly even running some sort of attack in a controlled ethical manner to demonstrate these shortfalls. Then, if ideas arise, proposals for improvement will be raised. In particular, this project would draw from literature revolving around these deployments, as well as the theoretical foundations of local differential privacy and differential privacy under continual observation.
+
+To summarize, studying deployments specifically Apple's iOS and Google's RAPPOR, along with studying literature on attacks, local differential privacy and differential privacy under continual observation.
+
+Some concerns that may arise with this are particularly: while there is lots of literature behind these deployments, how would any practical evaluation of these systems work; of course, taking into account controlled ethical concerns of working with a live system (likely requiring their permission). A somewhat more significant concern for me; is there any particular area I can investigate to bring new ideas and suggestion to the literature rather than just reiterate what already exists?
+
+Some citations (detailed formal annotated bibliography can be provided upon request):
+\begin{itemize}
+	\item Apple's system: https://machinelearning.apple.com/docs/learning-with-privacy-at-scale/appledifferentialprivacysystem.pdf
+	\item Google's RAPPOR: https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/42852.pdf
+	\item Local Differential Privacy Under Evolving Data: https://arxiv.org/abs/1802.07128
+	\item Differential Privacy Under Continual Observation: https://www.cs.toronto.edu/~toni/Papers/dp-observation.pdf
+\end{itemize}
+
+%\item \textbf{Case Machine Learning}:
+\end{enumerate}
+
+\end{document}
