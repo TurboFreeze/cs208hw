@@ -36,23 +36,95 @@ The public Github repo containing all work is at https://github.com/TurboFreeze/
 	\item[(i)] \begin{enumerate}
 	\item The clamping function is effectively applying a post-processing function to the noisy query result. In other words, Laplace noise is added to the true mean $\bar{x}$, which must be $(\epsilon, 0)$-DP. The following clamping function does not change the privacy characteristics guaranteed by differential privacy, meaning that this mechanism \textbf{meets the definition} of $(\epsilon, 0)$-DP (following directly by privacy under post-processing and the proof of Laplace DP).
 	
-	Note that the scale factor parameter of the Laplace distribution should be set to $s = GS_q/\epsilon$ for differential privacy, meaning that $\epsilon = GS_q/s$. In this case, the global sensitivity $GS_q$ is the maximum change that can be affected to the statistic by a single entry's change, which in this case would be $1/n$ for the mean. Furthermore $s = 2 / n$. The $\epsilon = (1/n) / (2/n) \implies \boxed{\epsilon= 0.5}$.
+	Note that the scale factor parameter of the Laplace distribution should be set to $s = GS_q/\epsilon$ for differential privacy, meaning that $\epsilon = GS_q/s$. In this case, the global sensitivity $GS_q$ is the maximum change that can be affected to the statistic by a single entry's change, which in this case would be $1/n$ for the mean. Furthermore $s = 2 / n$. The smallest $\epsilon$ for which this holds would then be $\epsilon = (1/n) / (2/n) \implies \boxed{\epsilon= 0.5}$.
+	\item An $\epsilon$ was found in the previous part so no $\delta$ is needed.
+	\item Again, this is effectively the standard Laplace mechanism, and as seen before, the differentially private mean with Laplace noise can be generalized by clamping at any domain $[a, b]$ with $\epsilon$ being generally defined as $\epsilon = GS_q / s = (b- a)/(2/n)=\boxed{n(b-a)/2}$.
 	\end{enumerate}
-	\item[(ii)] Constant ratios of Laplace mechanisms
-	\item[(iii)] 
+	\item[(ii)] \begin{enumerate}
+	\item The intuition here is that for noise in the interval $(-1, 1)$, the densities of the Laplacian noise have the proper ratio. Because of the clamping function, $P[M(x) = r]$ will only have nonzero probability within $[\bar{x}-1,\bar{x} + 1]$, but $P[M(x') = r]$ will be nonzero in $[\bar{x}'-1,\bar{x}' + 1]$. In other words, $\exists r \in [\bar{x}-1,\bar{x} + 1]$ s.t. $P[M(x') = r] = 0$, thereby showing that this algorithm \textbf{does not meet} the definition of $(\epsilon, 0)$-DP.
+	%The intuition here is that for noise in the interval $(-1, 1)$, the densities of the Laplacian noise have the proper ratio. However, at the endpoints, because the noise is clipped to this interval, the ratios are no longer appropriate; in fact, it is effectively the ratio of cumulative densities at the endpoints rather than probability densities. Since it should be intuitively clear that the claims here hold for within the interval, only the endpoints (of the noise) will be investigated in greater detail.
+	\item Derive $\delta$ as by noting that for two neighboring datasets $x, x'$ to yield the maximum possible lower bound for $\delta$, first set an $\epsilon = 0.5$ as was derived for mechanism 1. Recall that $M(x)$ is nonzero only in $[\bar{x}-1,\bar{x} + 1]$ and $M(x')$ only in $[\bar{x}'-1,\bar{x}' + 1]$. That means the difference in the below expression for $\delta$ will be zero except (assuming that $\bar{x}' > \bar{x}$) in $(\bar{x} - 1, \bar{x}' - 1]$.
 	\begin{align*}
-		\dfrac{P[M(x', q) = r]}{P[M(x, q)=r]} &= \\
+		\delta &\geq \underset{x\sim x'}{\text{max}}\left(\int_y\text{max}\left(P[M(x) \in y]-e^{\epsilon}P[M(x') =y], 0\right)\right)
 	\end{align*}
-	\item[(iv)] 
+	That means instead of integrating all $y$, simply focus on this interval where $P[M(x') =y]=0$, which would be in $(\bar{x} - 1, \bar{x}' - 1]$. Now:
+	\begin{align*}
+		\delta &\geq \underset{x\sim x'}{\text{max}}\left(\text{max}\left(P[M(x) \in (\bar{x} - 1, \bar{x}' - 1)]-e^{\epsilon}P[M(x') =(\bar{x} - 1, \bar{x}' - 1)], 0\right)\right)\\
+		&= \underset{x\sim x'}{\text{max}}\left(\text{max}\left(P[M(x) \in (\bar{x} - 1, \bar{x}'- 1]]-e^{\epsilon}*0, 0\right)\right)\\
+		&= \underset{x\sim x'}{\text{max}}\left(P[M(x) \in (\bar{x} - 1, \bar{x}'- 1]]\right)
+	\end{align*}
+	This is simply the probability that $M(x)$ is greater than $\bar{x}' + 1$, which can be found by the CDF of the Laplace distribution ($1-\text{exp}(-(x-\mu)/s)/2$ where $\mu = \bar{x}$ in this case because it is being added to the zero-mean Laplace and $s = 2/n$ Laplace noise scale parameter).
+	\begin{align*}
+	\delta &\geq P[M(x) \in (\bar{x} - 1, \bar{x}' - 1]]\\
+	&= P[M(x) \leq \bar{x}' - 1]\\
+	&= \dfrac{1}{2}\text{exp}\left(-\dfrac{ \bar{x}' - 1 - \bar{x}}{2/n}\right)\\
+	&=  \dfrac{1}{2}\text{exp}\left(- \dfrac{n(\bar{x}' - 1 - \bar{x})}{2}\right)
+	\end{align*}
+	Finally here, $\bar{x}' - \bar{x} \geq 1/n$ as the global sensitivity, so find $\delta$ to be as follows:
+	\begin{align*}
+	\delta &\geq \dfrac{1}{2}\text{exp}\left(- \dfrac{n(\bar{x}' - 1 - \bar{x})}{2}\right)\\
+	&\geq \dfrac{1}{2} \text{exp} \left(- \dfrac{n(1-1/n)}{2}\right)\\
+	&= \dfrac{1}{2} \text{exp} \left(- \dfrac{n - 1}{2}\right)
+	\end{align*}
+	$\therefore$ The smallest $\delta$ would be $\boxed{\delta = \frac{1}{2} \text{exp} \left(- \frac{n - 1}{2}\right)}$ along with $\boxed{\epsilon = 0.5}$ as found for the first mechanism.
+	\item Here the bounds for clamping are actually independent of the bounds of the data domain. Note that the $\delta$ arises (this is also a useful intuitive formulation for understanding how $\delta$ was derived in the previous part) from the $(\bar{x} - 1, \bar{x}' - 1]$, which is the interval that is covered by one noise but not the other, which is clearly independent of the data bounds. However, it is dependent on $n$ as formulated in the answer in the previous part $\boxed{\delta = \text{exp} (- (n - 1)/2)/2}$, while $\epsilon$ will now be converted to the general form as found for mechanism 1 to depend on $n$ with $\boxed{\epsilon = n(b-a)/2}$.
+	\end{enumerate}
+	\item[(iii)] 
+	\begin{enumerate}
+	\item Since the mechanism release value is binary, the upper bound of the ratio of probabilities can be considered as simply the maximum of either the $r=0$ or $r=1$. Again consider neighboring datasets $x$ and $x'$.
+	\begin{align*}
+		\dfrac{P[M(x') = r]}{P[M(x)=r]} &\leq \text{max}\left(\dfrac{P[M(x') = 0]}{P[M(x)=0]}, \dfrac{P[M(x') = 1]}{P[M(x)=1]}\right)\\
+		&= \text{max}\left(\dfrac{1-\bar{x}'}{1-\bar{x}}, \dfrac{\bar{x}'}{\bar{x}}\right)\\
+		&= \text{max}\left(\dfrac{1-\bar{x}'}{1-\bar{x}} - \dfrac{1-\bar{x}}{1-\bar{x}} + \dfrac{1-\bar{x}}{1-\bar{x}} , \dfrac{\bar{x}'}{\bar{x}} - \dfrac{\bar{x}}{\bar{x}} + \dfrac{\bar{x}}{\bar{x}}\right)\\
+		&= \text{max}\left(\dfrac{\bar{x}-\bar{x}'}{1-\bar{x}} + 1, \dfrac{\bar{x}'-\bar{x}}{\bar{x}} + 1\right)\\
+		&= \text{max}\left(\dfrac{\bar{x}-\bar{x}'}{1-\bar{x}}, \dfrac{\bar{x}'-\bar{x}}{\bar{x}}\right)+1
+	\end{align*}
+	Since these means can be as close to 0 or 1 as possible, and there are means in the denominator, that means this max can be potentially infinitely large and as a result this mechanism \textbf{does not satisfy} $(\epsilon, 0)$-DP.
+	\item Calculating this over the entire space of $y$ simply consists of a sum for the cases of when $y=0$ and $y=1$, as follows.
+	\begin{align*}
+		\delta &\geq \underset{x\sim x'}{\text{max}}\left(\int_y \text{max}\left(P[M(x) = y]-e^{\epsilon}P[M(x')=y], 0\right)\right)\\
+		&= \underset{x\sim x'}{\text{max}}(\text{max}\left(P[M(x) = 1]-e^{\epsilon}P[M(x')=1], 0\right)\\ &\qquad+ \text{max}\left(P[M(x) = 0]-e^{\epsilon}P[M(x')=0], 0\right))\\
+		&\geq (\bar{x} - \bar{x}') + (1-\bar{x} - (1-\bar{x}'))\\
+		&\geq \bar{x} - \bar{x}'\\
+		&= GS\\
+		&= \dfrac{1}{n}
+	\end{align*}
+	The smallest $\delta$ for which this would work would be $\boxed{\delta = 1/n}$ along with a finite $\epsilon$ of 0.
+	\item Instead of releasing 1 and 0, release the upper bound $b$ with probability $\bar{x}$ and the lower bound $a$ with probability $1-\bar{x}$, with everything else remaining the same. As noted earlier, no $\epsilon$ is needed, so it can remain 0. The $\delta$ needed would simply be updated to be $1/n$ as previously found to get $\boxed{\epsilon=0, \delta=1/n}$ in the general case.
+	\end{enumerate}
+	\item[(iv)] \begin{enumerate}
+	\item For the mean of a neighboring data set $\bar{x}'$, let a corresponding $Y'$ refer to the probability density function with $\bar{x}'$. The ratio of probabilities is then simply the ratio of the PDFs. Also outside of $[0, 1]$, any $\epsilon$ is valid because the probabilities (based on the density function case) is 0 for both.
+	\begin{align*}
+		\dfrac{P[M(x') = r]}{P[M(x)=r]} &= \dfrac{f_{Y'}(y)}{f_Y(y)}\\
+		&= \dfrac{\frac{e^{-n|y-\bar{x}'|/10}}{\int_0^1 e^{-n|z-\bar{x}'|/10} dz}}{\frac{e^{-n|y-\bar{x}|/10}}{\int_0^1 e^{-n|z-\bar{x}|/10} dz}}\\
+		&= \dfrac{e^{-n|y-\bar{x}'|/10}}{\int_0^1 e^{-n|z-\bar{x}'|/10} dz}\dfrac{\int_0^1 e^{-n|z-\bar{x}|/10} dz}{e^{-n|y-\bar{x}|/10}}\\
+		&= \dfrac{\int_0^1 e^{-n|z-\bar{x}|/10} dz}{\int_0^1 e^{-n|z-\bar{x}'|/10} dz}\dfrac{e^{-n|y-\bar{x}'|/10}}{e^{-n|y-\bar{x}|/10}}\\
+		&= \dfrac{\int_0^1 e^{-n|z-\bar{x}|/10} dz}{\int_0^1 e^{-n|z-\bar{x}'|/10} dz}e^{-n(|y-\bar{x}'|+|y-\bar{x}|)/10}\\
+		&\leq \dfrac{\int_0^1 e^{-n|z-\bar{x}|/10} dz}{\int_0^1 e^{-n|z-\bar{x}'|/10} dz}e^{-n|\bar{x}'-\bar{x}|/10}
+	\end{align*}
+	\begin{comment}%%%%%
+	The triangle inequality was used to introduce the inequality and will be shortly used again. Now since the later ratio is a constant with respect to the integrals, it can be moved into the upper integral with the triangle inequality again.
+	\begin{align*}
+		\dfrac{P[M(x') = r]}{P[M(x)=r]} &\leq \dfrac{\int_0^1 e^{-n|z-\bar{x}|/10} dz}{\int_0^1 e^{-n|z-\bar{x}'|/10} dz}e^{-n|\bar{x}'-\bar{x}|/10}\\
+		&= \dfrac{\int_0^1 e^{-n|z-\bar{x}|/10-n|\bar{x}'-\bar{x}|/10} dz}{\int_0^1 e^{-n|z-\bar{x}'|/10} dz}\\
+		&= \dfrac{\int_0^1 e^{-n(|z-\bar{x}|+|\bar{x}'-\bar{x}|)/10} dz}{\int_0^1 e^{-n|z-\bar{x}'|/10} dz}\\
+		&\leq \dfrac{\int_0^1 e^{-n|z-\bar{x}'|/10} dz}{\int_0^1 e^{-n|z-\bar{x}'|/10} dz}\\
+		&=1
+	\end{align*}
+	\end{comment}
+	Make the observation that $|e^{-n|z-\bar{x}|/10}| \leq e^{-n|z-\bar{x}'|/10-n(1/n)/10} =e^{-n|z-\bar{x}'|/10}e^{-1/10}$ and also $|\bar{x}'-\bar{x}| \leq GS = 1/n$.
+	\begin{align*}
+		\dfrac{P[M(x') = r]}{P[M(x)=r]} &\leq \dfrac{\int_0^1 e^{-n|z-\bar{x}|/10} dz}{\int_0^1 e^{-n|z-\bar{x}'|/10} dz}e^{-n|\bar{x}'-\bar{x}|/10}\\
+		&\leq \dfrac{\int_0^1 e^{-n|z-\bar{x}'|/10}e^{-1/10} dz}{\int_0^1 e^{-n|z-\bar{x}'|/10} dz}e^{-n(1/n)/10}\\
+		&= \dfrac{\int_0^1 e^{-n|z-\bar{x}'|/10}dz}{\int_0^1 e^{-n|z-\bar{x}'|/10} dz}e^{-1/10} e^{-1/10}\\
+		&=e^{1/5}
+	\end{align*}
+	This algorithm therefore \textbf{meets the definition} of $(\epsilon, 0)$-DP with $\boxed{\epsilon=0.2}$.
+	\item Since $(\epsilon, 0)$-DP is satisfied, the smallest value of $\delta$ needed is 0.
+	\item The only thing that would really change dependent on either $n$ or the new bounds $[a, b]$ would be the bounds of integration. The $\epsilon$ value is independent of either value and can be anything greater than or equal to what was found in the previous part, while no $\delta$ is needed.
+	\end{enumerate}
 \end{enumerate}
-\begin{align*}
-	P[M(x, q) = r] &= P[[\bar{x} + Z]^1_0 = r]\\
-	&= \\
-	\dfrac{P[M(x, q) = r]}{P[M(x', q)=r]} &= \\
-	P[M(x, q) = r] &= P[\bar{x} + [Z]^1_{-1} = r]\\
-	&= \\
-\end{align*}
-(d)
+(d) The first algorithm appears to be the best for releasing a mean because it provides $(\epsilon, 0)$-DP unlike the chance of catastrophic failure introduced by $(\epsilon, \delta)$-DP in other algorithms. Note that neither is objectively better, just a design decision, but pure $\epsilon$ is the traditional definition that is easier to work with and preferred here. At the same time, the first algorithm still provides meaningful results with high utility; the third algorithm, for example, will always release only 0 or 1, which provides very little utility in the released statistic.
 
 \pagebreak
 
@@ -150,14 +222,13 @@ The desired result has been shown.
 
 \pagebreak
 
-{\large\textbf{Appendix}}
+{\large\textbf{Problem 5}}
 
-\textbf{Code for Problem 1}
-
-\begin{lstlisting}[language=R]
-\end{lstlisting}
+See final project next steps in separate file.
 
 \pagebreak
+
+{\large\textbf{Appendix}}
 
 \textbf{Code for Problem 2}
 
