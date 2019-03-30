@@ -2,6 +2,10 @@
 
 .Rhistory
 
+# don't include theory writeups
+*.tex
+*.pdf
+
 # 'Helper' LaTeX files to ignore
 *.aux
 *.fdb_latexmk
