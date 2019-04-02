@@ -130,7 +130,7 @@ simulate.puma <- function (data, algorithm, n.sims) {
   means.dp
 }
 
-n.sims <- 5
+n.sims <- 100
 results <- data.frame(puma=character(), algo=character(), dp=numeric(),
                       actual=numeric(), rmse=numeric())
 # simulate for each puma
@@ -159,10 +159,25 @@ for (puma.id in pumas) {
 library(ggplot2)
 
 # plotting rmse
-results$puma <- as.factor(results$puma)
-plot.rmse <- ggplot(results, aes(x=puma)) +
+plot.rmse <- ggplot(results, aes(x=reorder(factor(puma), actual))) +
   geom_point(aes(y=rmse, color=algo)) +
-  scale_x_discrete() +
+  ggtitle("RMSEs for two DP-mean mechanisms by PUMA") +
+  scale_x_discrete(breaks = levels(reorder(factor(results$puma), results$actual))[c(TRUE, rep(FALSE, 2))]) +
+  xlab("puma") +
   theme_bw()
 plot.rmse
 ggsave("rmse.jpg", plot.rmse)
+
+
+# box and whisker plots
+plot.box <- ggplot(results, aes(x=reorder(factor(puma), actual))) + 
+  geom_boxplot(aes(y=dp, color=algo), outlier.shape = NA) +
+  geom_point(aes(y=actual, group="actual"), color="blue", alpha=0.5, size=0.5) +
+  ggtitle("Box and Whisker of DP-means") +
+  scale_x_discrete(breaks = levels(reorder(factor(results$puma), results$actual))[c(TRUE, rep(FALSE, 2))]) +
+  xlab("puma") +
+  ylab("dp mean") +
+  theme_bw()
+plot.box
+ggsave("box.jpg", plot.box)
+
